@@ -1,0 +1,192 @@
+let Pellets_SETTINGS = {
+    Region: "SE3",
+    RelayName: "Pelletspanna",
+    RelayNumbers: [1], // Numret för pelletspannan
+    Inverted: false,
+    PostalCode: "",
+    Latitude: "59.4062",
+    Longitude: "17.95203",
+    HeatingHours_MaxTemperature: 25,
+    HeatingHours_Plus30: 1,
+    HeatingHours_Plus20: 2,
+    HeatingHours_Plus10: 3,
+    HeatingHours_Zero: 5,
+    HeatingHours_Minus10: 10,
+    HeatingHours_Minus20: 18,
+    HeatingHours_Minus30: 24,
+    HeatingHours_MinTemperature: -25,
+    MinimumHoursPeriod_IsActive: false,
+    MinimumHoursPeriod_TemperatureStart: -10,
+    MinimumHoursPeriod_PriceAllowed: 50,
+    MinimumHoursPeriod_Hours: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+    MinimumHoursPeriod_NumberOfHours: 3,
+    AllowedDays: [1, 2, 3, 4, 5, 6, 7],
+    AllowedMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    BackupHours: [1, 2, 3, 4, 12, 13, 16, 17, 21, 22],
+    MaximumPrice: 0.0612, // Ändrad till motsvarande 0,70216 SEK per kWh (0.0612 EUR)
+    PriceAlwaysAllowed: -999,
+    PriceModifier_IsActive: true,
+    PriceModifier_Sum: -2.30 * 11.48, // Modifierat pris i SEK
+    PriceModifier_Months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    PriceModifier_Days: [1, 2, 3, 4, 5, 6, 7],
+    PriceModifier_Hours: [22, 23, 0, 1, 2, 3, 4, 5, 6],
+};
+
+console.log("SmartHeating: Script for pelletspannan has started successfully. The first relay action happens in 30 seconds.");
+let pellets_cHour = 0; let pellets_Executed = false; let pellets_previousAction = ""; let pellets_invertedOn = "true"; let pellets_invertedOff = "false;"
+let pellets_urlToCall = "https://api.spot-hinta.fi/SmartHeating";
+if (Pellets_SETTINGS.Inverted === true) { pellets_invertedOn = "false"; pellets_invertedOff = "true"; }
+
+Timer.set(30000, true, function () {
+    let hour = new Date().getHours();
+    if (pellets_cHour !== hour) {
+        pellets_cHour = hour; 
+        pellets_Executed = false; 
+        print("SmartHeating: The hour has now changed and a new relay action is going to be performed.");
+    }
+    if (pellets_cHour == hour && pellets_Executed == true) { 
+        console.log("SmartHeating: This hour has already been executed. Waiting for an hour change."); 
+        return; 
+    }
+    Shelly.call("HTTP.POST", { url: pellets_urlToCall, body: Pellets_SETTINGS, timeout: 15, ssl_ca: "*" }, pellets_RunResponse);
+});
+
+function pellets_RunResponse(result, error_code) {
+    if (error_code === 0 && result !== null) {
+        if ((result.code === 400 || result.code === 200) && pellets_previousAction === result.code) {
+           console.log("SmartHeating: Response JSON: " + result.body);
+           console.log("SmartHeating: No action is done. The relay statuses remain the same as during the previous hour.");
+            pellets_Executed = true;
+            return;
+        }
+        if (result.code === 400) {
+           console.log("SmartHeating: Response JSON: " + result.body);
+           console.log("SmartHeating: Changing relay status. Hour is too expensive. New relay status (true/false): " + pellets_invertedOff);
+            Shelly.call("Switch.Set", { id: Pellets_SETTINGS.RelayNumbers[0], on: pellets_invertedOff }, null, null);
+            pellets_previousAction = result.code;
+            pellets_Executed = true;
+            return;
+        }
+        if (result.code === 200) {
+           console.log("SmartHeating: Response JSON: " + result.body);
+           console.log("SmartHeating: Changing relay status. Hour is cheap enough. New relay status (true/false): " + pellets_invertedOn);
+            Shelly.call("Switch.Set", { id: Pellets_SETTINGS.RelayNumbers[0], on: pellets_invertedOn }, null, null);
+            pellets_previousAction = result.code;
+            pellets_Executed = true;
+            return;
+        }
+        if (result.code === 422) {
+           console.log("SmartHeating: Configuration error: " + JSON.stringify(result));
+            pellets_Executed = false;
+            return;
+        }
+    }
+
+    pellets_previousAction = "";
+    if (Pellets_SETTINGS.BackupHours.indexOf(pellets_cHour) > -1) {
+        console.log("SmartHeating: Error while fetching control information. It is a backup hour now. New relay status (true/false): " + pellets_invertedOn);
+        Shelly.call("Switch.Set", { id: Pellets_SETTINGS.RelayNumbers[0], on: pellets_invertedOn }, null, null);
+        pellets_Executed = false;
+        return;
+    } else {
+        console.log("SmartHeating: Error while fetching control information. It is not a backup hour now. New relay status (true/false): " + pellets_invertedOff);
+        Shelly.call("Switch.Set", { id: Pellets_SETTINGS.RelayNumbers[0], on: pellets_invertedOff }, null, null);
+        pellets_Executed = false;
+    }
+}
+let ElectricHeater_SETTINGS = {
+    Region: "SE3",
+    RelayName: "Elpatron",
+    RelayNumbers: [0], // Numret för elpatronen
+    Inverted: false,
+    PostalCode: "",
+    Latitude: "59.4062",
+    Longitude: "17.95203",
+    HeatingHours_MaxTemperature: 25,
+    HeatingHours_Plus30: 1,
+    HeatingHours_Plus20: 2,
+    HeatingHours_Plus10: 3,
+    HeatingHours_Zero: 5,
+    HeatingHours_Minus10: 10,
+    HeatingHours_Minus20: 18,
+    HeatingHours_Minus30: 24,
+    HeatingHours_MinTemperature: -25,
+    MinimumHoursPeriod_IsActive: false,
+    MinimumHoursPeriod_TemperatureStart: -10,
+    MinimumHoursPeriod_PriceAllowed: 50,
+    MinimumHoursPeriod_Hours: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+    MinimumHoursPeriod_NumberOfHours: 3,
+    AllowedDays: [1, 2, 3, 4, 5, 6, 7],
+    AllowedMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    BackupHours: [1, 2, 3, 4, 12, 13, 16, 17, 21, 22],
+    MaximumPrice: 0.0612, // Ändrad till motsvarande 0,70216 SEK per kWh (0.0612 EUR)
+    PriceAlwaysAllowed: -999,
+    PriceModifier_IsActive: true,
+    PriceModifier_Sum: -2.30 * 11.48, // Modifierat pris i SEK
+    PriceModifier_Months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    PriceModifier_Days: [1, 2, 3, 4, 5, 6, 7],
+    PriceModifier_Hours: [22, 23, 0, 1, 2, 3, 4, 5, 6],
+};
+
+console.log("SmartHeating: Script for elpatronen has started successfully. The first relay action happens in 30 seconds.");
+let heater_cHour = 0; let heater_Executed = false; let heater_previousAction = ""; let heater_invertedOn = "true"; let heater_invertedOff = "false;"
+let heater_urlToCall = "https://api.spot-hinta.fi/SmartHeating";
+if (ElectricHeater_SETTINGS.Inverted === true) { heater_invertedOn = "false"; heater_invertedOff = "true"; }
+
+Timer.set(30000, true, function () {
+    let hour = new Date().getHours();
+    if (heater_cHour !== hour) {
+        heater_cHour = hour;
+        heater_Executed = false;
+       console.log("SmartHeating: The hour has now changed and a new relay action is going to be performed.");
+    }
+    if (heater_cHour == hour && heater_Executed == true) {
+        console.log("SmartHeating: This hour has already been executed. Waiting for an hour change.");
+        return;
+    }
+    Shelly.call("HTTP.POST", { url: heater_urlToCall, body: ElectricHeater_SETTINGS, timeout: 15, ssl_ca: "*" }, heater_RunResponse);
+});
+
+function heater_RunResponse(result, error_code) {
+    if (error_code === 0 && result !== null) {
+        if ((result.code === 400 || result.code === 200) && heater_previousAction === result.code) {
+           console.log("SmartHeating: Response JSON: " + result.body);
+            console.log("SmartHeating: No action is done. The relay statuses remain the same as during the previous hour.");
+            heater_Executed = true;
+            return;
+        }
+        if (result.code === 400) {
+            console.log("SmartHeating: Response JSON: " + result.body);
+          console.log("SmartHeating: Changing relay status. Hour is too expensive. New relay status (true/false): " + heater_invertedOff);
+            Shelly.call("Switch.Set", { id: ElectricHeater_SETTINGS.RelayNumbers[0], on: heater_invertedOff }, null, null);
+            heater_previousAction = result.code;
+            heater_Executed = true;
+            return;
+        }
+        if (result.code === 200) {
+            console.log("SmartHeating: Response JSON: " + result.body);
+          console.log("SmartHeating: Changing relay status. Hour is cheap enough. New relay status (true/false): " + heater_invertedOn);
+            Shelly.call("Switch.Set", { id: ElectricHeater_SETTINGS.RelayNumbers[0], on: heater_invertedOn }, null, null);
+            heater_previousAction = result.code;
+            heater_Executed = true;
+            return;
+        }
+        if (result.code === 422) {
+           console.log("SmartHeating: Configuration error: " + JSON.stringify(result));
+            heater_Executed = false;
+            return;
+        }
+    }
+
+    heater_previousAction = "";
+    if (ElectricHeater_SETTINGS.BackupHours.indexOf(heater_cHour) > -1) {
+       console.log("SmartHeating: Error while fetching control information. It is a backup hour now. New relay status (true/false): " + heater_invertedOn);
+        Shelly.call("Switch.Set", { id: ElectricHeater_SETTINGS.RelayNumbers[0], on: heater_invertedOn }, null, null);
+        heater_Executed = false;
+        return;
+    } else {
+        console.log("SmartHeating: Error while fetching control information. It is not a backup hour now. New relay status (true/false): " + heater_invertedOff);
+        Shelly.call("Switch.Set", { id: ElectricHeater_SETTINGS.RelayNumbers[0], on: heater_invertedOff }, null, null);
+        heater_Executed = false;
+    }
+}
