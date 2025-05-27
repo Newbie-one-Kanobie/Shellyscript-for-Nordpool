@@ -33,7 +33,7 @@ let Pellets_SETTINGS = {
 };
 
 console.log("SmartHeating: Script for pelletspannan has started successfully. The first relay action happens in 30 seconds.");
-let pellets_cHour = 0; let pellets_Executed = false; let pellets_previousAction = ""; let pellets_invertedOn = "true"; let pellets_invertedOff = "false;"
+let pellets_cHour = 0; let pellets_Executed = false; let pellets_previousAction = ""; let pellets_invertedOn = "true"; let pellets_invertedOff = "false"
 let pellets_urlToCall = "https://api.spot-hinta.fi/SmartHeating";
 if (Pellets_SETTINGS.Inverted === true) { pellets_invertedOn = "false"; pellets_invertedOff = "true"; }
 
@@ -129,7 +129,7 @@ let ElectricHeater_SETTINGS = {
 };
 
 console.log("SmartHeating: Script for elpatronen has started successfully. The first relay action happens in 30 seconds.");
-let heater_cHour = 0; let heater_Executed = false; let heater_previousAction = ""; let heater_invertedOn = "true"; let heater_invertedOff = "false;"
+let heater_cHour = 0; let heater_Executed = false; let heater_previousAction = ""; let heater_invertedOn = "true"; let heater_invertedOff = "false"
 let heater_urlToCall = "https://api.spot-hinta.fi/SmartHeating";
 if (ElectricHeater_SETTINGS.Inverted === true) { heater_invertedOn = "false"; heater_invertedOff = "true"; }
 
